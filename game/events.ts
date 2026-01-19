@@ -8,7 +8,6 @@ export type ClientEvents = {
   flip: (roomID: roomID, tileID: tileID, unitID: unitID) => void;
   placeCard: (roomID: roomID, tileID: tileID, cardVal: cardID) => void;
   buyCard: (roomID: roomID) => void;
-  switchPlayer: (roomID: roomID, publicID: publicID) => void;
 };
 
 export type ServerEvents = {
