@@ -65,11 +65,101 @@
       background: #666;
       cursor: not-allowed;
     }
+    /* Dev Mode Styles */
+    .dev-mode-controls {
+      background: #442200;
+      border: 2px solid #ff9900;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .dev-mode-controls h3 {
+      color: #ff9900;
+      margin-top: 0;
+    }
+    .dev-mode-controls button {
+      background: #ff9900;
+    }
+    .dev-mode-controls button:hover {
+      background: #cc7700;
+    }
+    .dev-player-selector {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+    }
+    .dev-player-btn {
+      padding: 10px 20px;
+      border: 2px solid #666;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dev-player-btn.active {
+      border-color: #fff;
+      box-shadow: 0 0 10px rgba(255,255,255,0.3);
+    }
+    .dev-player-btn.current-turn {
+      border-color: #4CAF50;
+      box-shadow: 0 0 10px rgba(76,175,80,0.5);
+    }
+    .dev-player-btn[data-player="0"] { background: #4CAF50; }
+    .dev-player-btn[data-player="1"] { background: #2196F3; }
+    .dev-player-btn[data-player="2"] { background: #f44336; }
+    .dev-player-btn[data-player="3"] { background: #FFC107; color: #000; }
+    .dev-hands-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 15px 0;
+    }
+    .dev-player-hand {
+      background: #333;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: left;
+    }
+    .dev-player-hand.current-turn {
+      border: 2px solid #4CAF50;
+    }
+    .dev-player-hand h4 {
+      margin: 0 0 10px 0;
+    }
+    .dev-hand-cards {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    .hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Safe As Houses</h1>
+    
+    <!-- Dev Mode Toggle -->
+    <div id="dev-mode-toggle" style="margin-bottom: 15px;">
+      <button id="toggle-dev-mode">🔧 Enable Dev Mode</button>
+    </div>
+    
+    <!-- Dev Mode Controls (hidden by default) -->
+    <div id="dev-mode-controls" class="dev-mode-controls hidden">
+      <h3>🔧 Dev Mode Active</h3>
+      <p>Control all 4 players from this single tab</p>
+      
+      <div class="dev-player-selector" id="dev-player-selector">
+        <!-- Player buttons will be inserted here -->
+      </div>
+      
+      <div class="dev-hands-container" id="dev-hands-container">
+        <!-- Player hands will be shown here -->
+      </div>
+    </div>
+    
     <div class="status" id="status">Waiting for players...</div>
     <div class="player-info" id="players"></div>
     <div id="game-container"></div>
