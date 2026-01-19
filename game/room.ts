@@ -32,6 +32,8 @@ export class Room extends EventEmitter {
   actIndex: number = 0;
   turnTimer: NodeJS.Timeout | null = null;
   turnDuration: number = 30000;
+  isDevMode: boolean = false;
+  devModeSocketId: ID | null = null;
 
   io: IOServer<ClientEvents, ServerEvents>;
   logger: Logger;
@@ -68,6 +70,33 @@ export class Room extends EventEmitter {
     this.sendRoom("joinGameAck", this.players.length);
   }
 
+  addVirtualPlayer(name: string, baseSocketId: ID) {
+    const virtualId = `${baseSocketId}-virtual-${this.players.length}` as ID;
+    var player = new Player(virtualId, name, this.players.length.toString() as publicID);
+    this.players.push(player);
+    this.board.territory[player.id] = new Set<tileID>();
+    this.logger.info("Virtual player added:", virtualId);
+  }
+
+  initDevMode(socket: IOSocket<ClientEvents, ServerEvents>) {
+    this.isDevMode = true;
+    this.devModeSocketId = socket.id as ID;
+    
+    // Add the real player first
+    const realPlayer = new Player(socket.id as ID, "Player 1", "0" as publicID);
+    this.players.push(realPlayer);
+    this.board.territory[realPlayer.id] = new Set<tileID>();
+    socket.join(this.id);
+    
+    // Add 3 virtual players
+    for (let i = 1; i < PLAYER_COUNT; i++) {
+      this.addVirtualPlayer(`Player ${i + 1}`, socket.id as ID);
+    }
+    
+    this.logger.info("Dev mode initialized with 4 players from socket:", socket.id);
+    this.sendPlayer(socket.id as ID, "joinGameAck", this.players.length);
+  }
+
   isRoomFull() {
     return this.players.length == PLAYER_COUNT;
   }
@@ -96,17 +125,32 @@ export class Room extends EventEmitter {
       }
     });
     const playerDTOs = this.players.map((pl) => pl.toPlayerDTO());
-    this.players.forEach((pl) => {
+    
+    if (this.isDevMode && this.devModeSocketId) {
+      // In dev mode, send all player hands to the single client
+      const allPlayerHands = this.players.map((pl) => pl.toSelfDTO());
       this.sendPlayer(
-        pl.id,
-        "roundStart",
+        this.devModeSocketId,
+        "roundStartDevMode",
         this.id,
         playerDTOs,
-        pl.toSelfDTO(),
+        allPlayerHands,
         riverCards,
         true
       );
-    });
+    } else {
+      this.players.forEach((pl) => {
+        this.sendPlayer(
+          pl.id,
+          "roundStart",
+          this.id,
+          playerDTOs,
+          pl.toSelfDTO(),
+          riverCards,
+          true
+        );
+      });
+    }
     this.startTurnTimer();
   }
 
@@ -114,8 +158,13 @@ export class Room extends EventEmitter {
     try {
       const actPlayer = this.players[this.actIndex];
 
-      this.sendPlayer(actPlayer.id, "yourTurn", actPlayer.publicID, this.turnDuration);
-      this.sendOtherPlayers(actPlayer.id, "waitTurn", actPlayer.publicID, this.turnDuration);
+      if (this.isDevMode && this.devModeSocketId) {
+        // In dev mode, send yourTurn to the single client (they control all players)
+        this.sendPlayer(this.devModeSocketId, "yourTurn", actPlayer.publicID, this.turnDuration);
+      } else {
+        this.sendPlayer(actPlayer.id, "yourTurn", actPlayer.publicID, this.turnDuration);
+        this.sendOtherPlayers(actPlayer.id, "waitTurn", actPlayer.publicID, this.turnDuration);
+      }
 
       // Clear any previous timer
       if (this.turnTimer) clearTimeout(this.turnTimer);

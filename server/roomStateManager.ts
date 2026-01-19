@@ -17,6 +17,8 @@ interface SerializedRoom {
   players: ReturnType<Player["toJSON"]>[];
   deck: ReturnType<Deck["toJSON"]>;
   board: ReturnType<Board["toJSON"]>;
+  isDevMode: boolean;
+  devModeSocketId: string | null;
 }
 
 /**
@@ -31,6 +33,8 @@ export function serializeRoomState(room: Room): string {
     players: room.players.map((p) => p.toJSON()),
     deck: room.deck.toJSON(),
     board: room.board.toJSON(),
+    isDevMode: room.isDevMode,
+    devModeSocketId: room.devModeSocketId,
   };
   return JSON.stringify(data);
 }
@@ -55,6 +59,8 @@ export function deserializeRoomState(
   room.turnDuration = data.turnDuration;
   room.deck = Deck.fromJSON(data.deck);
   room.board = Board.fromJSON(data.board);
+  room.isDevMode = data.isDevMode ?? false;
+  room.devModeSocketId = (data.devModeSocketId as ID) ?? null;
 
   // Re-hydrate players
   room.players = data.players.map((playerData) => {
