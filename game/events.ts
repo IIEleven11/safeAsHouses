@@ -3,6 +3,7 @@ import { cardID, coins, publicID, roomID, tileID, unitID } from "./types.js";
 
 export type ClientEvents = {
   joinGame: () => void;
+  joinGameDevMode: () => void;
   submitTurn: (roomID: roomID) => void;
   flip: (roomID: roomID, tileID: tileID, unitID: unitID) => void;
   placeCard: (roomID: roomID, tileID: tileID, cardVal: cardID) => void;
@@ -33,6 +34,13 @@ export type ServerEvents = {
     roomID: roomID,
     playerDTOs: playerDTO[],
     selfDTO: selfDTO,
+    riverCards: cardID[],
+    gameStart: boolean
+  ) => void;
+  roundStartDevMode: (
+    roomID: roomID,
+    playerDTOs: playerDTO[],
+    allPlayerHands: selfDTO[],
     riverCards: cardID[],
     gameStart: boolean
   ) => void;

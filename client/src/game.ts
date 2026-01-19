@@ -97,6 +97,7 @@ export class GameState extends PIXI.EventEmitter implements IState {
   hud: PIXI.Container;
   tileDisplayContainer: PIXI.Container;
   handDisplayContainer: PIXI.Container;
+  devModeContainer: PIXI.Container | null = null;
 
   model: {
     roomId: roomID;
@@ -108,6 +109,9 @@ export class GameState extends PIXI.EventEmitter implements IState {
     territory: Partial<Record<publicID, Set<string>>>;
     actAction: ActiveAction;
     votedEnd: boolean;
+    isDevMode: boolean;
+    allPlayerHands: selfDTO[];
+    activePlayerIndex: number;
   } = {
     roomId: "" as roomID, 
     myTurn: false,
@@ -118,6 +122,9 @@ export class GameState extends PIXI.EventEmitter implements IState {
     territory: {},
     actAction: ActiveAction.None,
     votedEnd: false,
+    isDevMode: false,
+    allPlayerHands: [],
+    activePlayerIndex: 0,
   };
 
   mainUI: {
@@ -385,9 +392,21 @@ export class GameState extends PIXI.EventEmitter implements IState {
   }
 
   updateMyTurn(myTurn: boolean, publicID: publicID, duration: number) {
-    this.model.myTurn = myTurn;
     this.model.timeLeft = duration;
     this.model.actPlayerID = publicID;
+    
+    // In dev mode, always consider it "myTurn" since we control all players
+    // But we also auto-switch to the current turn's player
+    if (this.model.isDevMode) {
+      this.model.myTurn = true;
+      const actIndex = this.model.players.findIndex((pl) => pl.id == publicID);
+      if (actIndex >= 0) {
+        this.switchToPlayer(actIndex);
+      }
+    } else {
+      this.model.myTurn = myTurn;
+    }
+    
     const actIndex = this.model.players.findIndex((pl) => pl.id == publicID);
     const col = actIndex % 2;
     const row = Math.floor(actIndex / 2);
@@ -412,6 +431,7 @@ export class GameState extends PIXI.EventEmitter implements IState {
     this.model.roomId = roomId;
     this.model.players = playerDTOs;
     this.model.self = selfDTO;
+    this.model.isDevMode = false;
     this.setupTileDisplay();
     this.setupHandDisplay();
     this.setupPlayerBases();
@@ -421,6 +441,90 @@ export class GameState extends PIXI.EventEmitter implements IState {
     if (initialTile) {
       this.onTileClicked(initialTile);
     }
+  }
+
+  initializeGameDevMode(
+    roomId: roomID,
+    playerDTOs: playerDTO[],
+    allPlayerHands: selfDTO[],
+    riverCards: cardID[]
+  ) {
+    this.model.roomId = roomId;
+    this.model.players = playerDTOs;
+    this.model.allPlayerHands = allPlayerHands;
+    this.model.isDevMode = true;
+    this.model.activePlayerIndex = 0;
+    // Set self to the first player's hand initially
+    this.model.self = allPlayerHands[0] ?? null;
+    
+    this.setupTileDisplay();
+    this.setupHandDisplay();
+    this.setupDevModeUI();
+    this.setupPlayerBases();
+    this.updateRivers(riverCards);
+    this.updateHandDisplay(this.model.self?.hand ?? []);
+    const initialTile = this.mainUI.tiles[0]?.[0];
+    if (initialTile) {
+      this.onTileClicked(initialTile);
+    }
+  }
+
+  setupDevModeUI() {
+    if (this.devModeContainer) {
+      this.hud.removeChild(this.devModeContainer);
+    }
+    
+    this.devModeContainer = new PIXI.Container();
+    this.devModeContainer.position.set(BOARD_WIDTH + 10, HUD_HEIGHT - 40);
+    
+    // Dev mode label
+    const devLabel = new PIXI.Text({
+      text: "DEV MODE - Switch Player:",
+      style: { fill: 0xffff00, fontSize: 12, fontFamily: "Courier", fontWeight: "bold" },
+    });
+    devLabel.position.set(0, 0);
+    this.devModeContainer.addChild(devLabel);
+    
+    // Player switch buttons
+    const buttonWidth = 60;
+    const buttonHeight = 25;
+    const startX = 180;
+    
+    for (let i = 0; i < this.model.players.length; i++) {
+      const player = this.model.players[i];
+      const btn = new PIXI.Graphics()
+        .roundRect(0, 0, buttonWidth, buttonHeight, 5)
+        .fill({ color: player.colour ?? 0x555555 });
+      btn.position.set(startX + i * (buttonWidth + 10), -5);
+      btn.eventMode = "static";
+      btn.cursor = "pointer";
+      
+      const btnText = new PIXI.Text({
+        text: `P${i + 1}`,
+        style: { fill: 0xffffff, fontSize: 14, fontFamily: "Courier", fontWeight: "bold" },
+      });
+      btnText.position.set(buttonWidth / 2 - btnText.width / 2, buttonHeight / 2 - btnText.height / 2);
+      btn.addChild(btnText);
+      
+      btn.on("pointertap", () => {
+        this.switchToPlayer(i);
+      });
+      
+      this.devModeContainer.addChild(btn);
+    }
+    
+    this.hud.addChild(this.devModeContainer);
+  }
+
+  switchToPlayer(playerIndex: number) {
+    if (!this.model.isDevMode || playerIndex < 0 || playerIndex >= this.model.allPlayerHands.length) {
+      return;
+    }
+    
+    this.model.activePlayerIndex = playerIndex;
+    this.model.self = this.model.allPlayerHands[playerIndex] ?? null;
+    this.updateHandDisplay(this.model.self?.hand ?? []);
+    console.log(`Switched to player ${playerIndex + 1}`);
   }
 
   updateRivers(riverCards: cardID[]) {

@@ -54,6 +54,7 @@ export class StateManager {
   registerLobbyHandlers(l: LobbyState) {}
   registerMainMenuHandlers(m: MainMenuState) {
     m.on(MMSig.Join, () => this.socket.emit("joinGame"));
+    m.on(MMSig.JoinDevMode, () => this.socket.emit("joinGameDevMode"));
   }
   registerVictoryHandlers(v: VictoryState) {
     v.on(VSig.Back, () => this.changeState(ClientState.MainMenu));
@@ -103,6 +104,13 @@ export class StateManager {
       this.changeState(ClientState.Game);
       if (gameStart) {
         this.game.initializeGame(roomId, playerDTOs, selfDTO, riverCards);
+      }
+    });
+
+    socket.on("roundStartDevMode", (roomId, playerDTOs, allPlayerHands, riverCards, gameStart) => {
+      this.changeState(ClientState.Game);
+      if (gameStart) {
+        this.game.initializeGameDevMode(roomId, playerDTOs, allPlayerHands, riverCards);
       }
     });
 

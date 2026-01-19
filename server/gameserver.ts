@@ -126,6 +126,28 @@ async function startWorker() {
         }
       });
 
+      socket.on("joinGameDevMode", async () => {
+        try {
+          // Create a new dev mode room with all 4 virtual players
+          const devRoomId = `dev:${Date.now()}:${Math.random().toString(36).substring(2, 7)}` as roomID;
+          const room = new Room(io, logger);
+          room.id = devRoomId;
+          
+          // Initialize dev mode with virtual players
+          room.initDevMode(socket);
+          logger.info(`Dev mode room ${room.id} created with 4 virtual players from socket: ${socket.id}`);
+
+          // Save the state to Redis
+          await saveRoomState(redisClient as any, room);
+
+          // Start the game immediately since we have all 4 players
+          room.startGame();
+          await saveRoomState(redisClient as any, room);
+        } catch (err) {
+          logger.error("Error during joinGameDevMode:", err);
+        }
+      });
+
       const handleSubmitTurn = async (room: Room) => {
         if (room.isPlayerTurn(socket.id)) {
           room.advanceTurn();
